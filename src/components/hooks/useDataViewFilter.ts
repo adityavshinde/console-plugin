@@ -76,6 +76,7 @@ interface ResourceFilterConfig {
   statusFilter: (phases: any, obj: any, customData?: any) => boolean;
   statusReducer: (obj: any, customData?: any) => string;
   hasDataSourceFilter: boolean;
+  hasDateRangeFilter: boolean;
   defaultStatusValues?: string[];
   defaultDataSourceValues?: string[];
   getOptionLabel: (id: any) => string;
@@ -93,6 +94,7 @@ const RESOURCE_FILTER_CONFIG: Record<ResourceType, ResourceFilterConfig> = {
     statusFilter: pipelineStatusFilter,
     statusReducer: pipelineFilterReducer,
     hasDataSourceFilter: false,
+    hasDateRangeFilter: false,
     getOptionLabel: (id) => ListFilterLabels[id],
   },
   PipelineRun: {
@@ -106,6 +108,7 @@ const RESOURCE_FILTER_CONFIG: Record<ResourceType, ResourceFilterConfig> = {
     statusFilter: pipelineRunStatusFilter,
     statusReducer: pipelineRunFilterReducer,
     hasDataSourceFilter: true,
+    hasDateRangeFilter: true,
     defaultDataSourceValues: ['cluster-data'],
     getOptionLabel: (id) => ListFilterLabels[id],
   },
@@ -118,7 +121,8 @@ const RESOURCE_FILTER_CONFIG: Record<ResourceType, ResourceFilterConfig> = {
     ],
     statusFilter: pipelineRunStatusFilter,
     statusReducer: pipelineRunFilterReducer,
-    hasDataSourceFilter: true,
+    hasDataSourceFilter: false,
+    hasDateRangeFilter: false,
     defaultDataSourceValues: ['cluster-data'],
     getOptionLabel: (id) => ListFilterLabels[id],
   },
@@ -132,6 +136,7 @@ const RESOURCE_FILTER_CONFIG: Record<ResourceType, ResourceFilterConfig> = {
     statusFilter: pipelineApprovalFilter,
     statusReducer: pipelineApprovalFilterReducer,
     hasDataSourceFilter: false,
+    hasDateRangeFilter: false,
     getOptionLabel: (id) => getApprovalStatusInfo(id).message,
   },
 };
@@ -157,18 +162,15 @@ export const useDataViewFilter = <T extends K8sResourceCommon>({
   const { t } = useTranslation('plugin__pipelines-console-plugin');
   const isTektonResultEnabled = useFlag(FLAG_PIPELINE_TEKTON_RESULT_INSTALLED);
 
-  const pageType =
-    resourceType === 'PipelineRun'
-      ? 'pipelineRun'
-      : resourceType === 'TaskRun'
-      ? 'taskRun'
-      : resourceType?.toLowerCase() ?? 'pipelineRun';
+  const config = resourceType
+    ? RESOURCE_FILTER_CONFIG[resourceType]
+    : undefined;
 
   const {
     preference: datasourcePreference,
     setPreference: setDatasourcePreference,
     resetPreference: resetDatasourcePreference,
-  } = useDatasourcePreference(pageType);
+  } = useDatasourcePreference(resourceType);
   const allStatusIds = useMemo(() => Object.values(ListFilterId), []);
 
   const {
@@ -177,7 +179,7 @@ export const useDataViewFilter = <T extends K8sResourceCommon>({
     setTimespanDateFilter,
     dateFilterCEL,
     preferenceLoaded,
-  } = useDateRangeFilter(pageType);
+  } = useDateRangeFilter(resourceType);
 
   const timeRangeOptions = TimeRangeOptions();
   const currentKey = timespan ? formatPrometheusDuration(timespan) : '';
@@ -211,7 +213,7 @@ export const useDataViewFilter = <T extends K8sResourceCommon>({
         ],
       });
     }
-    if (preferenceLoaded) {
+    if (config.hasDateRangeFilter && preferenceLoaded) {
       filters.push({
         id: 'timeRange',
         title: t('Time Range'),
@@ -235,10 +237,6 @@ export const useDataViewFilter = <T extends K8sResourceCommon>({
     preferenceLoaded,
     timeRangeOptions,
   ]);
-
-  const config = resourceType
-    ? RESOURCE_FILTER_CONFIG[resourceType]
-    : undefined;
 
   const matchesCheckboxFilter = useCallback(
     (obj: T, filterId: string, selectedValues: string[]) => {
@@ -322,10 +320,14 @@ export const useDataViewFilter = <T extends K8sResourceCommon>({
 
   const onClearAll = useCallback(() => {
     setFilterOverrides({ name: '', labels: [] });
-    setTimespanDateFilter(NO_DATE_RANGE_FILTER);
-    resetDatasourcePreference();
+    if (config?.hasDateRangeFilter) {
+      setTimespanDateFilter(NO_DATE_RANGE_FILTER);
+    }
+    if (config?.hasDataSourceFilter) {
+      resetDatasourcePreference();
+    }
     resetPage();
-  }, [resetPage, setTimespanDateFilter, resetDatasourcePreference]);
+  }, [resetPage, setTimespanDateFilter, resetDatasourcePreference, config]);
 
   const labelSuggestions = useMemo(() => {
     if (!data) return [];

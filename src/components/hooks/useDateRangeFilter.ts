@@ -41,13 +41,13 @@ export type DateRangeFilterResult = {
 export const NO_DATE_RANGE_FILTER = 0;
 
 export const useDateRangeFilter = (
-  resourceType: string,
+  resourceType: string | undefined,
 ): DateRangeFilterResult => {
   const [timespan, setTimespanDateFilter, preferenceLoaded] =
     useUserPreference<number>(
       `${USER_PREFERENCE_PREFIX}.dateRangeFilter.${resourceType}`,
       NO_DATE_RANGE_FILTER,
-      true,
+      !!resourceType,
     );
 
   const selectedTimespan = timespan ?? NO_DATE_RANGE_FILTER;

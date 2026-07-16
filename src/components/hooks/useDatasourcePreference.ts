@@ -4,11 +4,11 @@ import { USER_PREFERENCE_PREFIX } from '../../consts';
 
 export const DEFAULT_DATASOURCE_VALUES = ['cluster-data'];
 
-export const useDatasourcePreference = (resourceType: string) => {
+export const useDatasourcePreference = (resourceType: string | undefined) => {
   const [preference, setPreference, loaded] = useUserPreference<string[]>(
     `${USER_PREFERENCE_PREFIX}.dataSource.${resourceType}`,
     DEFAULT_DATASOURCE_VALUES,
-    true,
+    !!resourceType,
   );
 
   const resetPreference = useCallback(() => {
